@@ -1,6 +1,7 @@
 # श्री गणेश पब्लिक धर्मकांटा
 
-Static landing page for the `index.html` website of श्री गणेश पब्लिक धर्मकांटा, a weighing service located near Sushila Renu Cold Storage, Kabir Chowk, Narhan-Singhiyaghat-Rosera Road, Bihar.
+Static landing page for the [Shree Ganesh Public Dharmkanta Website](https://vercel.app), a commercial weighing service located near Sushila Renu Cold Storage, Kabir Chowk, Narhan-Singhiyaghat-Rosera Road, Bihar.
+
 
 ## Overview
 
