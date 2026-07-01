@@ -415,7 +415,7 @@
                 <h5 class="text-white font-bold text-2xl tracking-wide hindi-font">
                     <span class="text-orange-500">श्री गणेश</span> पब्लिक धर्मकांटा
                 </h5>
-                <p class="text-sm text-stone-400 font-medium">नरहन क्षेत्र का सबसे भरोसेमंद डिजिटल वेब्रिज।</p>
+                <p class="text-sm text-stone-400 font-medium">नरहन क्षेत्र का सबसे भरोसेमंद धर्मकांटा।</p>
                 <!-- Social / quick links in footer -->
                 <div class="flex gap-3 justify-center md:justify-start pt-2">
                     <a href="tel:8002794871" class="w-10 h-10 rounded-lg bg-stone-800 hover:bg-orange-500 text-stone-300 hover:text-white flex items-center justify-center transition-colors">
@@ -649,8 +649,11 @@
          JAVASCRIPT
     ════════════════════════════════════════ -->
     <script>
-        // ── Google Apps Script backend URL ──────────────────────────────
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwemIfdg9qLMhsANjM1jJavIN4IvBZLXExgUlPCZIA_izqqS7O1aFTJXlNcxW973kVM/exec';
+        // ── Cloudinary config ───────────────────────────────────────────
+        const CLD_CLOUD   = 'ds8kpcnwh';
+        const CLD_PRESET  = 'dharmkanta_gallery';
+        const CLD_FOLDER  = 'dharmkanta-gallery';
+        const CLD_API_KEY = '588798746189524';
 
         // ── Hamburger / mobile menu ─────────────────────────────────────
         const hamburgerBtn = document.getElementById('hamburger-btn');
@@ -720,16 +723,23 @@
         let galleryShownCount = 0;
         const GALLERY_PAGE    = 4;
 
+        async function fetchGalleryFiles(thumbWidth = 600) {
+            const res  = await fetch(`/api/gallery?action=list`);
+            const data = await res.json();
+            return (data.files || []).map(f => ({
+                id:  f.id,
+                url: `https://res.cloudinary.com/${CLD_CLOUD}/image/upload/f_auto,q_auto,w_${thumbWidth}/${f.id}`
+            }));
+        }
+
         async function loadGalleryFromDrive() {
             const loadingEl = document.getElementById('gallery-loading');
             const gridEl    = document.getElementById('owner-photo-grid');
             const emptyEl   = document.getElementById('gallery-empty');
 
             try {
-                const res   = await fetch(SCRIPT_URL + '?action=list');
-                const raw   = await res.json();
-                const raw_files = Array.isArray(raw) ? raw : (raw.files || []);
-                allGalleryFiles = applyOrderToFiles(raw_files);
+                const files = await fetchGalleryFiles(600);
+                allGalleryFiles = applyOrderToFiles(files);
 
                 loadingEl.classList.add('hidden');
 
@@ -740,7 +750,7 @@
 
                 gridEl.classList.remove('hidden');
                 galleryShownCount = 0;
-                galleryShowMore(); // show first 4
+                galleryShowMore();
             } catch (err) {
                 loadingEl.innerHTML = '<p class="text-stone-400 text-sm">तस्वीरें लोड नहीं हो सकीं।</p>';
             }
@@ -802,19 +812,16 @@
             document.getElementById('gallery').scrollIntoView({ behavior: 'smooth' });
         }
 
-        function createPhotoCard(imgUrl, driveId) {
+        function createPhotoCard(imgUrl, publicId) {
             const card = document.createElement('div');
             card.className = "bg-white p-2 rounded-xl shadow-xs border border-stone-200 hover:shadow-md transition-all cursor-pointer group opacity-0 scale-95";
             card.style.animation = "smoothReveal 0.4s ease-out forwards";
             card.setAttribute('onclick', 'openImageLightbox(this)');
-            if (driveId) card.setAttribute('data-drive-id', driveId);
+            if (publicId) card.setAttribute('data-drive-id', publicId);
             card.innerHTML = `
                 <div class="aspect-square rounded-lg overflow-hidden bg-stone-200 relative">
                     <img src="${imgUrl}" alt="धर्मकांटा तस्वीर" loading="lazy"
                          class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
-                    <span class="absolute bottom-2 left-2 bg-emerald-600/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-sm shadow-xs flex items-center gap-1">
-                        <i class="fa-solid fa-cloud"></i> Google Drive
-                    </span>
                 </div>`;
             return card;
         }
@@ -920,9 +927,7 @@
             loadingEl.classList.remove('hidden');
             gridEl.innerHTML = '';
             try {
-                const res   = await fetch(SCRIPT_URL + '?action=list');
-                const raw   = await res.json();
-                const files = Array.isArray(raw) ? raw : (raw.files || []);
+                const files = await fetchGalleryFiles(300);
                 loadingEl.classList.add('hidden');
                 if (files.length === 0) { emptyEl.classList.remove('hidden'); return; }
                 gridEl.classList.remove('hidden');
@@ -945,18 +950,18 @@
         }
 
         // ── Delete photo ────────────────────────────────────────────────
-        async function adminDeletePhoto(driveFileId, cardEl) {
+        async function adminDeletePhoto(publicId, cardEl) {
             if (!confirm("Permanently delete this photo?")) return;
             try {
-                await fetch(SCRIPT_URL, {
-                    method: 'POST', mode: 'no-cors',
-                    body: JSON.stringify({ action: 'delete', id: driveFileId })
+                const res = await fetch('/api/gallery?action=delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'delete', public_id: publicId })
                 });
+                const data = await res.json();
                 cardEl.remove();
-                // Remove from saved order too
-                const order = getSavedOrder().filter(id => id !== driveFileId);
+                const order = getSavedOrder().filter(id => id !== publicId);
                 localStorage.setItem(ORDER_KEY, JSON.stringify(order));
-                // Refresh public gallery
                 const pubGrid = document.getElementById('owner-photo-grid');
                 pubGrid.innerHTML = '';
                 loadGalleryFromDrive();
@@ -994,9 +999,7 @@
             listEl.innerHTML = '';
 
             try {
-                const res  = await fetch(SCRIPT_URL + '?action=list');
-                const raw  = await res.json();
-                const raw_files = Array.isArray(raw) ? raw : (raw.files || []);
+                const raw_files = await fetchGalleryFiles(200);
                 reorderFiles = applyOrderToFiles(raw_files);
                 loadingEl.classList.add('hidden');
 
@@ -1083,7 +1086,7 @@
         }
 
         function adminReorderReset() {
-            if (!confirm("Reset to original Drive order?")) return;
+            if (!confirm("Reset to original Cloudinary order?")) return;
             localStorage.removeItem(ORDER_KEY);
             adminLoadReorder();
             loadGalleryFromDrive();
@@ -1142,21 +1145,27 @@
                 statusEl.textContent = 'Uploading…';
                 statusEl.className = 'text-xs text-yellow-400 font-semibold flex-shrink-0';
                 try {
-                    const base64 = await fileToBase64(file);
-                    const res    = await fetch(SCRIPT_URL, {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('upload_preset', CLD_PRESET);
+                    formData.append('folder', CLD_FOLDER);
+                    formData.append('api_key', CLD_API_KEY);
+
+                    const res    = await fetch(`https://api.cloudinary.com/v1_1/${CLD_CLOUD}/image/upload`, {
                         method: 'POST',
-                        body: JSON.stringify({ action: 'upload', filename: file.name, mimeType: file.type, base64 })
+                        body: formData
                     });
                     const result = await res.json();
-                    if (result.status === 'success') {
+                    if (result.public_id) {
                         statusEl.textContent = '✅ Done';
                         statusEl.className = 'text-xs text-emerald-400 font-semibold flex-shrink-0';
+                        const imgUrl  = `https://res.cloudinary.com/${CLD_CLOUD}/image/upload/f_auto,q_auto,w_600/${result.public_id}`;
                         const pubGrid = document.getElementById('owner-photo-grid');
                         pubGrid.classList.remove('hidden');
                         document.getElementById('gallery-empty').classList.add('hidden');
-                        allGalleryFiles.unshift({ url: result.url, id: result.id });
+                        allGalleryFiles.unshift({ url: imgUrl, id: result.public_id });
                         galleryShownCount++;
-                        pubGrid.insertBefore(createPhotoCard(result.url, result.id), pubGrid.firstChild);
+                        pubGrid.insertBefore(createPhotoCard(imgUrl, result.public_id), pubGrid.firstChild);
                     } else {
                         statusEl.textContent = '❌ Failed';
                         statusEl.className = 'text-xs text-red-400 font-semibold flex-shrink-0';
@@ -1170,15 +1179,6 @@
             adminSelectedFiles = [];
             document.getElementById('admin-file-input').value = '';
             setTimeout(adminLoadPhotos, 1000);
-        }
-
-        function fileToBase64(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload  = () => resolve(reader.result.split(',')[1]);
-                reader.onerror = reject;
-            });
         }
     </script>
 </body>
