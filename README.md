@@ -38,11 +38,7 @@ The page is written in Hindi and includes a polished mobile-first experience wit
 ## Notes
 
 - The page depends on external CDNs for Tailwind CSS, Font Awesome, and Google Fonts.
-<<<<<<< HEAD
-=======
-<img width="1919" height="871" alt="Screenshot 2026-05-31 140949" src="https://github.com/user-attachments/assets/7a3b72ef-b471-432a-ae98-f46807557a36" />
 
->>>>>>> aba617321aa3c022491eb082cbf8a27cb0e8d043
 - Image assets are loaded from Google-hosted sources.
 
 ## Contact
